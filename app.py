@@ -57,13 +57,20 @@ def load_labels_and_mapping(path=CLASS_INDEX_PATH):
     norm_to_orig = {normalize_label(k): k for k in labels}
     return labels, norm_to_orig
 
-def preprocess_image(img: Image.Image):
+def preprocess_image(img):
+    # Ensure image is in RGB mode to prevent normalization errors
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406],
-                             [0.229, 0.224, 0.225])
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225]
+        ),
     ])
+
     return transform(img).unsqueeze(0)
 
 def predict(img, model, labels):
