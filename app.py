@@ -1,26 +1,32 @@
 # app.py
 import streamlit as st
-import tensorflow as tf
-import numpy as np
+import torch
+import torch.nn.functional as F
+from torchvision import transforms
 from PIL import Image
 import io
-import os
 import json
 import re
+import os
 
+# ==============================================================
+# CONFIG
+# ==============================================================
 MODEL_PATH = "model/mobilenetv2_tomato_best.pth"
 CLASS_INDEX_PATH = "class_indices.json"
 
-# -----------------------------------------------
-# Helper functions
-# -----------------------------------------------
+# ==============================================================
+# Helper Functions
+# ==============================================================
+
 @st.cache_resource
 def load_model():
-    model = tf.keras.models.load_model(MODEL_PATH)
+    """Load trained PyTorch model."""
+    model = torch.load(MODEL_PATH, map_location=torch.device("cpu"))
+    model.eval()
     return model
 
 def normalize_label(s: str) -> str:
-    """Normalize label strings for fuzzy matching."""
     if s is None:
         return ""
     s = s.strip().lower()
@@ -29,11 +35,10 @@ def normalize_label(s: str) -> str:
     return s
 
 def prettify_label(s: str) -> str:
-    """Make a label human-readable."""
     return s.replace("_", " ").replace("-", " ").title()
 
 def load_labels_and_mapping(path=CLASS_INDEX_PATH):
-    """Load class names from saved JSON."""
+    """Load class names from JSON file."""
     with open(path, "r") as f:
         class_indices = json.load(f)
     labels = [k for k, _ in sorted(class_indices.items(), key=lambda x: x[1])]
@@ -41,20 +46,27 @@ def load_labels_and_mapping(path=CLASS_INDEX_PATH):
     return labels, norm_to_orig
 
 def preprocess_image(img: Image.Image, img_size=(224, 224)):
+    transform = transforms.Compose([
+        transforms.Resize(img_size),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ])
     img = img.convert("RGB")
-    img = img.resize(img_size)
-    arr = np.array(img) / 255.0
-    arr = np.expand_dims(arr, axis=0).astype(np.float32)
-    return arr
+    tensor = transform(img).unsqueeze(0)  # Add batch dimension
+    return tensor
 
 def predict(img, model, labels):
     x = preprocess_image(img)
-    probs = model.predict(x)[0]
+    with torch.no_grad():
+        outputs = model(x)
+        probs = F.softmax(outputs, dim=1)[0].cpu().numpy()
     return dict(zip(labels, probs.tolist()))
 
-# -----------------------------------------------
+# ==============================================================
 # Disease Information
-# -----------------------------------------------
+# ==============================================================
+
 DISEASE_INFO = {
     "Bacterial spot": {
         "description": "A bacterial disease causing small, dark, water-soaked spots on leaves and fruit.",
@@ -148,12 +160,12 @@ DISEASE_INFO = {
 
 DISEASE_INFO_LOOKUP = {normalize_label(k): v for k, v in DISEASE_INFO.items()}
 
-# -----------------------------------------------
-# Streamlit UI
-# -----------------------------------------------
+# ==============================================================
+# Streamlit App
+# ==============================================================
+
 st.set_page_config(page_title="Tomato Disease Detector", page_icon="🍅", layout="centered")
 
-# Add GitHub and LinkedIn links in the sidebar
 st.sidebar.markdown(
     "### 🔗 Links\n"
     "[🍅 GitHub Repository](https://github.com/imdwipayana/tomato_disease_detector_with_PyTorch)  \n"
@@ -164,6 +176,7 @@ st.title("🍅 Tomato Disease Detector")
 st.write("Upload a tomato leaf image to predict its health status and get prevention tips.")
 
 uploaded = st.file_uploader("📤 Choose a tomato leaf image", type=["jpg", "jpeg", "png"])
+
 model = load_model()
 labels, norm_label_map = load_labels_and_mapping()
 
