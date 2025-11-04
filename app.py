@@ -8,7 +8,7 @@ import os
 import json
 import re
 
-MODEL_PATH = "model/best_mobilenetv2_tomato.keras"
+MODEL_PATH = "model/mobilenetv2_tomato_best.pth"
 CLASS_INDEX_PATH = "class_indices.json"
 
 # -----------------------------------------------
