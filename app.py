@@ -187,7 +187,7 @@ st.set_page_config(page_title="Tomato Disease Detector", page_icon="🍅", layou
 st.sidebar.markdown(
     "### 🔗 Links\n"
     "[🍅 GitHub Repository](https://github.com/imdwipayana/tomato_disease_detector_with_PyTorch)  \n"
-    "[🔗 LinkedIn Profile](https://www.linkedin.com/in/yourprofile/)"
+    "[🔗 LinkedIn Profile](https://www.linkedin.com/in/eka-dwipayana/)"
 )
 
 st.title("🍅 Tomato Disease Detector")
